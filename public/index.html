@@ -5,79 +5,325 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>YouTube Pro - Local Edition</title>
     <style>
-        :root { --bg: #0f0f0f; --yt-red: #f00; --border: #333; --card-bg: #1a1a1a; --text: #fff; }
+        :root { 
+            --bg: #0f0f0f; 
+            --yt-red: #f00; 
+            --border: #333; 
+            --card-bg: #1a1a1a; 
+            --text: #fff;
+            --header-height: 56px;
+            --sidebar-width: 200px;
+        }
         * { margin:0; padding:0; box-sizing:border-box; font-family: 'Segoe UI', Tahoma, sans-serif; }
-        body { background: var(--bg); color: var(--text); direction: rtl; padding-top: 70px; }
-        header { background: var(--bg); height: 56px; position: fixed; top: 0; width: 100%; display: flex; align-items: center; padding: 0 20px; border-bottom: 1px solid var(--border); z-index: 1000; justify-content: space-between; }
-        .logo { color: white; text-decoration: none; font-weight: bold; font-size: 20px; display: flex; align-items: center; cursor: pointer; }
+        body { background: var(--bg); color: var(--text); direction: rtl; padding-top: var(--header-height); -webkit-text-size-adjust: 100%; touch-action: manipulation; }
+        
+        /* ===== HEADER ===== */
+        header { background: var(--bg); height: var(--header-height); position: fixed; top: 0; width: 100%; display: flex; align-items: center; padding: 0 15px; border-bottom: 1px solid var(--border); z-index: 1000; justify-content: space-between; }
+        .logo { color: white; text-decoration: none; font-weight: bold; font-size: 18px; display: flex; align-items: center; cursor: pointer; flex-shrink: 0; }
         .logo span { background: var(--yt-red); padding: 2px 8px; border-radius: 4px; margin-left: 8px; }
-        .search-container { display: flex; align-items: center; flex: 0 1 600px; margin: 0 20px; position: relative; }
+        .search-container { display: flex; align-items: center; flex: 0 1 600px; margin: 0 15px; position: relative; }
         .search-form { display: flex; width: 100%; position: relative; }
-        .search-form input { width: 100%; padding: 10px 50px 10px 20px; border-radius: 40px; border: 2px solid transparent; background: #222; color: #fff; outline: none; }
-        .search-form button { position: absolute; left: 5px; top: 50%; transform: translateY(-50%); width: 38px; height: 38px; border-radius: 50%; border: none; background: var(--yt-red); color: #fff; cursor: pointer; }
-        .sidebar { position: fixed; right: 0; top: 56px; width: 200px; height: calc(100vh - 56px); background: var(--bg); padding: 10px; border-left: 1px solid var(--border); overflow-y: auto; }
-        .nav-item { padding: 12px; display: block; color: white; text-decoration: none; border-radius: 8px; margin-bottom: 5px; cursor: pointer; }
+        .search-form input { width: 100%; padding: 8px 45px 8px 15px; border-radius: 40px; border: 2px solid transparent; background: #222; color: #fff; outline: none; font-size: 14px; }
+        .search-form button { position: absolute; left: 5px; top: 50%; transform: translateY(-50%); width: 34px; height: 34px; border-radius: 50%; border: none; background: var(--yt-red); color: #fff; cursor: pointer; font-size: 14px; }
+        .header-actions { display: flex; gap: 8px; align-items: center; }
+        .action-btn { background: #2a2a2a; border: none; color: white; padding: 8px 12px; border-radius: 20px; cursor: pointer; font-size: 14px; white-space: nowrap; transition: background 0.2s; }
+        .action-btn:hover { background: #3a3a3a; }
+        
+        /* Hamburger Menu Button */
+        .hamburger-btn { background: transparent; border: none; color: white; font-size: 24px; cursor: pointer; padding: 8px; line-height: 1; margin-left: 10px; transition: opacity 0.2s; }
+        .hamburger-btn:hover { opacity: 0.8; }
+        .hamburger-btn:active { transform: scale(0.9); }
+
+        /* Hide hamburger on desktop by default */
+        @media (min-width: 769px) {
+            .hamburger-btn { display: none; }
+        }
+        
+        /* ===== SIDEBAR ===== */
+        .sidebar { position: fixed; right: 0; top: var(--header-height); width: var(--sidebar-width); height: calc(100vh - var(--header-height)); background: var(--bg); padding: 10px; border-left: 1px solid var(--border); overflow-y: auto; z-index: 999; transition: transform 0.3s ease; }
+        .sidebar-overlay { display: block; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.5); z-index: 998; opacity: 0; pointer-events: none; transition: opacity 0.3s ease; }
+        .sidebar-overlay.open { opacity: 1; pointer-events: auto; }
+        .nav-item { padding: 12px; display: block; color: white; text-decoration: none; border-radius: 8px; margin-bottom: 5px; cursor: pointer; transition: background 0.2s; font-size: 14px; }
         .nav-item:hover { background: #2a2a2a; }
-        .main-content { margin-right: 200px; padding: 20px; min-height: 100vh; }
+        .nav-item:active { background: #333; }
+        
+        /* ===== MAIN CONTENT ===== */
+        .main-content { margin-right: var(--sidebar-width); padding: 20px; min-height: calc(100vh - var(--header-height)); }
+        
+        /* ===== VIDEO GRID ===== */
         .grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); gap: 20px; }
-        .card { background: var(--card-bg); border-radius: 12px; overflow: hidden; cursor: pointer; transition: 0.2s; }
-        .card:hover { transform: translateY(-5px); }
+        .card { background: var(--card-bg); border-radius: 12px; overflow: hidden; cursor: pointer; transition: transform 0.2s, box-shadow 0.2s; }
+        .card:hover { transform: translateY(-5px); box-shadow: 0 8px 16px rgba(0,0,0,0.3); }
+        .card:active { transform: scale(0.98); }
         .card img { width: 100%; aspect-ratio: 16/9; object-fit: cover; }
         .card-info { padding: 12px; }
+        .card-info h4 { font-size: 14px; margin-bottom: 5px; line-height: 1.4; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
+        .card-info p { font-size: 12px; color: #888; }
+        
+        /* ===== WATCH PAGE ===== */
         .watch-container { display: grid; grid-template-columns: 1fr 350px; gap: 20px; }
         #player-wrapper { width: 100%; aspect-ratio: 16/9; background: #000; border-radius: 12px; overflow: hidden; }
-        .action-btn { background: #2a2a2a; border: none; color: white; padding: 8px 15px; border-radius: 20px; cursor: pointer; margin: 5px; }
+        .download-btn { background: #00c853; border: none; color: white; padding: 10px 18px; border-radius: 20px; cursor: pointer; margin: 5px; font-weight: bold; font-size: 14px; transition: background 0.2s, transform 0.2s; }
+        .download-btn:hover { background: #00e676; }
+        .download-btn:active { transform: scale(0.95); }
+        
+        /* ===== RELATED VIDEOS ===== */
         .related-section { margin-top: 30px; }
         .related-section h3 { margin-bottom: 15px; color: #aaa; font-size: 18px; }
         .related-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(250px, 1fr)); gap: 15px; }
-        .related-card { background: #1a1a1a; border-radius: 8px; overflow: hidden; cursor: pointer; transition: 0.2s; }
+        .related-card { background: #1a1a1a; border-radius: 8px; overflow: hidden; cursor: pointer; transition: transform 0.2s, background 0.2s; }
         .related-card:hover { transform: translateY(-3px); background: #252525; }
+        .related-card:active { transform: scale(0.98); }
         .related-card img { width: 100%; aspect-ratio: 16/9; object-fit: cover; }
         .related-info { padding: 10px; }
         .related-info h4 { font-size: 14px; margin-bottom: 5px; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
         .related-info p { font-size: 12px; color: #888; }
-        
-        /* Download Modal */
-        .download-btn { background: #00c853; border: none; color: white; padding: 8px 15px; border-radius: 20px; cursor: pointer; margin: 5px; font-weight: bold; }
-        .download-btn:hover { background: #00e676; }
-        .modal-overlay { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.8); z-index: 2000; display: flex; justify-content: center; align-items: center; }
-        .modal { background: #1a1a1a; border-radius: 12px; padding: 20px; max-width: 500px; width: 90%; max-height: 80vh; overflow-y: auto; }
-        .modal h3 { margin-bottom: 15px; color: #fff; }
-        .modal-close { position: absolute; top: 10px; left: 10px; background: #333; border: none; color: white; width: 30px; height: 30px; border-radius: 50%; cursor: pointer; font-size: 18px; }
-        .quality-option { display: flex; justify-content: space-between; align-items: center; padding: 12px; background: #252525; border-radius: 8px; margin-bottom: 10px; cursor: pointer; transition: 0.2s; }
+
+        /* ===== DOWNLOAD MODAL ===== */
+        .modal-overlay { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.85); z-index: 2000; display: flex; justify-content: center; align-items: center; padding: 20px; }
+        .modal { background: #1a1a1a; border-radius: 12px; padding: 20px; max-width: 500px; width: 100%; max-height: 80vh; overflow-y: auto; position: relative; }
+        .modal h3 { margin-bottom: 15px; color: #fff; font-size: 20px; }
+        .modal-close { position: absolute; top: 10px; left: 10px; background: #333; border: none; color: white; width: 32px; height: 32px; border-radius: 50%; cursor: pointer; font-size: 20px; display: flex; align-items: center; justify-content: center; transition: background 0.2s; }
+        .modal-close:hover { background: #444; }
+        .quality-option { display: flex; justify-content: space-between; align-items: center; padding: 12px; background: #252525; border-radius: 8px; margin-bottom: 10px; cursor: pointer; transition: background 0.2s; }
         .quality-option:hover { background: #333; }
+        .quality-option:active { background: #3a3a3a; }
         .quality-info { flex: 1; }
-        .quality-label { color: #fff; font-weight: bold; }
+        .quality-label { color: #fff; font-weight: bold; font-size: 15px; }
         .quality-details { color: #888; font-size: 12px; }
-        .quality-download { background: #00c853; border: none; color: white; padding: 6px 15px; border-radius: 15px; cursor: pointer; }
+        .quality-download { background: #00c853; border: none; color: white; padding: 8px 16px; border-radius: 15px; cursor: pointer; font-size: 13px; transition: background 0.2s; }
         .loading-text { color: #888; text-align: center; padding: 20px; }
 
-        /* TV Channels */
+        /* ===== TV CHANNELS ===== */
         .tv-player-container { background: #000; border-radius: 12px; overflow: hidden; margin-bottom: 20px; }
         .tv-player { width: 100%; aspect-ratio: 16/9; }
-        .channels-list { display: grid; grid-template-columns: repeat(auto-fill, minmax(200px, 1fr)); gap: 15px; }
-        .channel-card { background: #1a1a1a; border-radius: 8px; overflow: hidden; cursor: pointer; transition: 0.2s; border: 2px solid transparent; }
+        .channels-list { display: grid; grid-template-columns: repeat(auto-fill, minmax(180px, 1fr)); gap: 15px; }
+        .channel-card { background: #1a1a1a; border-radius: 8px; overflow: hidden; cursor: pointer; transition: transform 0.2s, border-color 0.2s, background 0.2s; border: 2px solid transparent; }
         .channel-card:hover { transform: translateY(-3px); border-color: var(--yt-red); }
+        .channel-card:active { transform: scale(0.98); }
         .channel-card.active { border-color: var(--yt-red); background: #2a2a2a; }
         .channel-logo { width: 100%; aspect-ratio: 16/9; object-fit: contain; background: #111; padding: 10px; }
         .channel-info { padding: 10px; }
-        .channel-info h4 { font-size: 14px; margin-bottom: 5px; }
+        .channel-info h4 { font-size: 14px; margin-bottom: 5px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
         .channel-info p { font-size: 12px; color: #888; }
         .live-badge { background: #f00; color: white; padding: 2px 8px; border-radius: 4px; font-size: 10px; font-weight: bold; }
-        .m3u-upload-section { background: #1a1a1a; padding: 15px; border-radius: 8px; margin-bottom: 20px; display: flex; gap: 10px; align-items: center; }
-        .m3u-input { flex: 1; background: #222; border: 1px solid #333; color: white; padding: 10px 15px; border-radius: 8px; }
-        .m3u-btn { background: var(--yt-red); color: white; border: none; padding: 10px 20px; border-radius: 8px; cursor: pointer; font-weight: bold; }
+        .m3u-upload-section { background: #1a1a1a; padding: 15px; border-radius: 8px; margin-bottom: 20px; display: flex; gap: 10px; align-items: center; flex-wrap: wrap; }
+        .m3u-input { flex: 1; min-width: 200px; background: #222; border: 1px solid #333; color: white; padding: 10px 15px; border-radius: 8px; font-size: 14px; }
+        .m3u-btn { background: var(--yt-red); color: white; border: none; padding: 10px 20px; border-radius: 8px; cursor: pointer; font-weight: bold; font-size: 14px; transition: background 0.2s; }
         .m3u-btn:hover { background: #ff3333; }
-        .category-tabs { display: flex; gap: 10px; margin-bottom: 15px; overflow-x: auto; padding-bottom: 5px; }
-        .category-tab { background: #222; color: white; border: none; padding: 8px 15px; border-radius: 20px; cursor: pointer; white-space: nowrap; }
+        .category-tabs { display: flex; gap: 8px; margin-bottom: 15px; overflow-x: auto; padding-bottom: 5px; -webkit-overflow-scrolling: touch; scrollbar-width: thin; }
+        .category-tabs::-webkit-scrollbar { height: 6px; }
+        .category-tabs::-webkit-scrollbar-thumb { background: #444; border-radius: 3px; }
+        .category-tab { background: #222; color: white; border: none; padding: 8px 16px; border-radius: 20px; cursor: pointer; white-space: nowrap; font-size: 14px; transition: background 0.2s; }
         .category-tab.active { background: var(--yt-red); }
+        .category-tab:active { transform: scale(0.95); }
 
-        @media (max-width: 1000px) { .sidebar { display: none; } .main-content { margin-right: 0; } .watch-container { grid-template-columns: 1fr; } }
+        /* ========================================
+           RESPONSIVE: TABLET (768px - 1024px)
+           ======================================== */
+        @media (max-width: 1024px) {
+            .sidebar { width: 180px; }
+            .main-content { margin-right: 180px; }
+            .watch-container { grid-template-columns: 1fr 280px; }
+            .grid { grid-template-columns: repeat(auto-fill, minmax(240px, 1fr)); gap: 15px; }
+        }
+
+        /* ========================================
+           RESPONSIVE: MOBILE LANDSCAPE & SMALL TABLET (481px - 768px)
+           ======================================== */
+        @media (max-width: 768px) {
+            :root {
+                --sidebar-width: 260px;
+            }
+            
+            /* Hide sidebar by default, show as drawer */
+            .sidebar { transform: translateX(100%); width: var(--sidebar-width); box-shadow: -4px 0 15px rgba(0,0,0,0.5); }
+            .sidebar.open { transform: translateX(0); }
+            .sidebar-overlay { display: block; opacity: 0; pointer-events: none; transition: opacity 0.3s; }
+            .sidebar-overlay.open { opacity: 1; pointer-events: auto; }
+            
+            .main-content { margin-right: 0; padding: 15px; }
+            
+            /* Compact header */
+            header { padding: 0 10px; }
+            .logo { font-size: 16px; }
+            .logo span { padding: 2px 6px; font-size: 14px; }
+            .search-container { margin: 0 10px; flex: 1; max-width: 400px; }
+            .search-form input { padding: 7px 40px 7px 12px; font-size: 13px; }
+            .search-form button { width: 30px; height: 30px; font-size: 12px; }
+            .action-btn { padding: 6px 10px; font-size: 13px; }
+            
+            /* Grid adjustments */
+            .grid { grid-template-columns: repeat(auto-fill, minmax(200px, 1fr)); gap: 12px; }
+            .card-info h4 { font-size: 13px; }
+            
+            /* Watch page - single column */
+            .watch-container { grid-template-columns: 1fr; gap: 15px; }
+            #player-wrapper { border-radius: 0; margin: 0 -15px; width: calc(100% + 30px); }
+            
+            /* Related videos */
+            .related-grid { grid-template-columns: repeat(auto-fill, minmax(180px, 1fr)); gap: 10px; }
+            
+            /* TV Channels */
+            .channels-list { grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); gap: 10px; }
+            .m3u-upload-section { flex-direction: column; align-items: stretch; }
+            .m3u-input { min-width: unset; width: 100%; }
+            .m3u-btn { width: 100%; }
+            
+            /* Modal */
+            .modal { padding: 15px; max-width: 95%; }
+            .modal h3 { font-size: 18px; }
+        }
+
+        /* ========================================
+           RESPONSIVE: MOBILE PORTRAIT (max 480px)
+           ======================================== */
+        @media (max-width: 480px) {
+            :root {
+                --header-height: 50px;
+            }
+            
+            body { padding-top: var(--header-height); }
+            header { height: var(--header-height); padding: 0 8px; }
+            
+            /* Logo more compact */
+            .logo { font-size: 14px; }
+            .logo span { padding: 1px 5px; font-size: 12px; }
+            
+            /* Search full width */
+            .search-container { margin: 0 5px; max-width: unset; flex: 1; order: 3; width: 100%; }
+            header { flex-wrap: wrap; height: auto; min-height: var(--header-height); padding: 5px 8px; }
+            .search-container { order: 3; margin: 5px 0 8px 0; flex-basis: 100%; }
+            
+            .action-btn { padding: 5px 8px; font-size: 12px; }
+            
+            /* Smaller grid items */
+            .main-content { padding: 10px; }
+            .grid { grid-template-columns: 1fr; gap: 10px; }
+            .card-info { padding: 10px; }
+            .card-info h4 { font-size: 12px; }
+            .card-info p { font-size: 11px; }
+            
+            /* Player full bleed */
+            #player-wrapper { margin: 0 -10px; width: calc(100% + 20px); border-radius: 0; }
+            
+            /* Buttons stacked */
+            .watch-container h2 { font-size: 16px; line-height: 1.3; }
+            .watch-container .action-btn,
+            .watch-container .download-btn { display: block; width: 100%; margin: 5px 0; text-align: center; }
+            
+            /* Related videos smaller */
+            .related-section { margin-top: 20px; }
+            .related-section h3 { font-size: 16px; margin-bottom: 10px; }
+            .related-grid { grid-template-columns: repeat(auto-fill, minmax(140px, 1fr)); gap: 8px; }
+            .related-info h4 { font-size: 12px; }
+            .related-info p { font-size: 11px; }
+            
+            /* TV Channels */
+            .channels-list { grid-template-columns: repeat(2, 1fr); gap: 8px; }
+            .channel-info h4 { font-size: 12px; }
+            .category-tab { padding: 6px 12px; font-size: 12px; }
+            
+            /* Modal */
+            .modal { padding: 12px; }
+            .modal h3 { font-size: 16px; margin-bottom: 10px; }
+            .quality-option { padding: 10px; }
+            .quality-label { font-size: 13px; }
+            .quality-download { padding: 6px 12px; font-size: 12px; }
+        }
+
+        /* ========================================
+           RESPONSIVE: VERY SMALL SCREENS (max 360px)
+           ======================================== */
+        @media (max-width: 360px) {
+            .logo span { display: none; }
+            .grid { grid-template-columns: 1fr; }
+            .channels-list { grid-template-columns: repeat(2, 1fr); }
+        }
+
+        /* ========================================
+           RESPONSIVE: SMART TV (min 1200px)
+           ======================================== */
+        @media (min-width: 1200px) {
+            :root {
+                --sidebar-width: 240px;
+            }
+            
+            body { font-size: 18px; }
+            .main-content { margin-right: var(--sidebar-width); padding: 30px; }
+            
+            /* Larger header and search */
+            header { height: 70px; padding: 0 30px; }
+            body { padding-top: 70px; }
+            .logo { font-size: 24px; }
+            .search-container { margin: 0 30px; }
+            .search-form input { padding: 12px 55px 12px 20px; font-size: 16px; }
+            .search-form button { width: 42px; height: 42px; font-size: 16px; }
+            .action-btn { padding: 10px 18px; font-size: 16px; }
+            
+            /* Larger grid */
+            .grid { grid-template-columns: repeat(auto-fill, minmax(320px, 1fr)); gap: 25px; }
+            .card-info { padding: 15px; }
+            .card-info h4 { font-size: 16px; }
+            .card-info p { font-size: 14px; }
+            
+            /* Larger watch page */
+            .watch-container { grid-template-columns: 1fr 400px; gap: 30px; }
+            .watch-container h2 { font-size: 24px; margin-top: 20px; }
+            .action-btn { padding: 12px 20px; font-size: 16px; }
+            .download-btn { padding: 12px 22px; font-size: 16px; }
+            
+            /* Larger related videos */
+            .related-section h3 { font-size: 20px; }
+            .related-grid { grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); gap: 20px; }
+            .related-info { padding: 12px; }
+            .related-info h4 { font-size: 16px; }
+            .related-info p { font-size: 14px; }
+            
+            /* Larger TV channels */
+            .channels-list { grid-template-columns: repeat(auto-fill, minmax(220px, 1fr)); gap: 18px; }
+            .channel-info { padding: 12px; }
+            .channel-info h4 { font-size: 16px; }
+            .channel-info p { font-size: 14px; }
+            .m3u-input { padding: 12px 18px; font-size: 16px; }
+            .m3u-btn { padding: 12px 24px; font-size: 16px; }
+            .category-tab { padding: 10px 20px; font-size: 16px; }
+        }
+
+        /* ========================================
+           ACCESSIBILITY & FOCUS STYLES
+           ======================================== */
+        *:focus-visible {
+            outline: 3px solid var(--yt-red);
+            outline-offset: 2px;
+        }
+
+        /* Keyboard navigation for Smart TV */
+        .card:focus-visible, .related-card:focus-visible, .channel-card:focus-visible {
+            outline: 3px solid var(--yt-red);
+            outline-offset: -3px;
+            transform: scale(1.05);
+        }
+
+        .nav-item:focus-visible {
+            outline: 2px solid var(--yt-red);
+            outline-offset: -2px;
+        }
+
+        /* Reduced motion for users who prefer it */
+        @media (prefers-reduced-motion: reduce) {
+            *, *::before, *::after {
+                animation-duration: 0.01ms !important;
+                animation-iteration-count: 1 !important;
+                transition-duration: 0.01ms !important;
+            }
+        }
     </style>
 </head>
 <body>
 
     <header>
+        <button class="hamburger-btn" onclick="toggleSidebar()" aria-label="القائمة">☰</button>
         <a href="#" onclick="showHome(); return false;" class="logo"><span>▶</span> YouTube Pro</a>
         <div class="search-container">
             <form class="search-form" onsubmit="handleSearch(event)">
@@ -85,9 +331,12 @@
                 <button type="submit">▶</button>
             </form>
         </div>
-        <button class="action-btn" onclick="showLibrary()">📚 المكتبة</button>
+        <div class="header-actions">
+            <button class="action-btn" onclick="showLibrary()">📚 المكتبة</button>
+        </div>
     </header>
 
+    <div class="sidebar-overlay" onclick="toggleSidebar()"></div>
     <nav class="sidebar">
         <div class="nav-item" onclick="showHome()">🏠 الرئيسية</div>
         <div class="nav-item" onclick="showCategory('برمجة بايثون')">💻 البرمجة</div>
@@ -106,6 +355,73 @@
     <script>
         const DB_KEY = 'YT_PRO_LOCAL_DB';
         let db = JSON.parse(localStorage.getItem(DB_KEY)) || { favorites: [] };
+
+        // Toggle sidebar for mobile
+        function toggleSidebar() {
+            const sidebar = document.querySelector('.sidebar');
+            const overlay = document.querySelector('.sidebar-overlay');
+            sidebar.classList.toggle('open');
+            overlay.classList.toggle('open');
+        }
+
+        // Close sidebar when clicking nav item on mobile
+        document.querySelectorAll('.nav-item').forEach(item => {
+            item.addEventListener('click', () => {
+                if (window.innerWidth <= 768) {
+                    toggleSidebar();
+                }
+            });
+        });
+
+        // Swipe to close sidebar on mobile
+        let touchStartX = 0;
+        let touchStartY = 0;
+        document.addEventListener('touchstart', (e) => {
+            touchStartX = e.touches[0].clientX;
+            touchStartY = e.touches[0].clientY;
+        }, { passive: true });
+
+        document.addEventListener('touchend', (e) => {
+            const sidebar = document.querySelector('.sidebar');
+            if (!sidebar.classList.contains('open')) return;
+            
+            const touchEndX = e.changedTouches[0].clientX;
+            const touchEndY = e.changedTouches[0].clientY;
+            const diffX = touchStartX - touchEndX;
+            const diffY = Math.abs(touchStartY - touchEndY);
+            
+            // Swipe right (RTL: close sidebar) and horizontal movement > vertical
+            if (diffX < -50 && diffY < 100) {
+                toggleSidebar();
+            }
+        }, { passive: true });
+
+        // Keyboard navigation for Smart TV
+        document.addEventListener('keydown', (e) => {
+            // ESC to close sidebar
+            if (e.key === 'Escape') {
+                const sidebar = document.querySelector('.sidebar');
+                if (sidebar.classList.contains('open')) {
+                    toggleSidebar();
+                }
+            }
+        });
+
+        // Make cards keyboard navigable
+        function makeFocusable(selector) {
+            document.querySelectorAll(selector).forEach(el => {
+                el.setAttribute('tabindex', '0');
+                el.addEventListener('keydown', (e) => {
+                    if (e.key === 'Enter' || e.key === ' ') {
+                        e.preventDefault();
+                        el.click();
+                    }
+                });
+            });
+        }
+
+        // Apply after DOM updates
+        const originalRenderGrid = renderGrid;
 
         async function apiCall(endpoint, params = {}) {
             try {
@@ -140,11 +456,14 @@
                 return;
             }
             const gridHTML = videos.map(v => `
-                <div class="card" onclick="showWatch('${v.videoId}')">
+                <div class="card" onclick="showWatch('${v.videoId}')" tabindex="0" role="button" aria-label="${v.title}">
                     <img src="${v.thumbnail}" loading="lazy">
                     <div class="card-info"><h4>${v.title}</h4><p>${v.channel}</p></div>
                 </div>`).join('');
             app.innerHTML = `<h2>${title}</h2><br><div class="grid">${gridHTML}</div>`;
+            
+            // Add keyboard navigation to cards
+            makeFocusable('.card');
         }
 
         async function showHome() {
@@ -227,7 +546,7 @@
                 const videos = extractVideos(data);
                 if (videos.length > 0) {
                     const relatedHTML = videos.map(v => `
-                        <div class="related-card" onclick="showWatch('${v.videoId}')">
+                        <div class="related-card" onclick="showWatch('${v.videoId}')" tabindex="0" role="button" aria-label="${v.title}">
                             <img src="${v.thumbnail}" loading="lazy">
                             <div class="related-info">
                                 <h4>${v.title}</h4>
@@ -235,6 +554,9 @@
                             </div>
                         </div>`).join('');
                     relatedSection.innerHTML = `<h3>📺 الفيديوهات ذات الصلة</h3><div class="related-grid">${relatedHTML}</div>`;
+                    
+                    // Add keyboard navigation
+                    makeFocusable('.related-card');
                 } else {
                     relatedSection.innerHTML = '<h3>📺 الفيديوهات ذات الصلة</h3><p>لا توجد نتائج</p>';
                 }
@@ -403,7 +725,7 @@
             }
 
             list.innerHTML = filteredChannels.map((ch, i) => `
-                <div class="channel-card ${currentChannel === i ? 'active' : ''}" onclick="playChannel(${i})">
+                <div class="channel-card ${currentChannel === i ? 'active' : ''}" onclick="playChannel(${i})" tabindex="0" role="button" aria-label="${ch.name}">
                     <div class="channel-logo" style="display:flex; align-items:center; justify-content:center; font-size:40px; background:#111;">
                         ${ch.logo || '📺'}
                     </div>
@@ -412,6 +734,9 @@
                         <p>${ch.category || 'عام'} <span class="live-badge">LIVE</span></p>
                     </div>
                 </div>`).join('');
+            
+            // Add keyboard navigation
+            makeFocusable('.channel-card');
         }
 
         function playChannel(index) {
