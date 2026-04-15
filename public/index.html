@@ -1,0 +1,567 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>YouTube Pro - Local Edition</title>
+    <style>
+        :root { --bg: #0f0f0f; --yt-red: #f00; --border: #333; --card-bg: #1a1a1a; --text: #fff; }
+        * { margin:0; padding:0; box-sizing:border-box; font-family: 'Segoe UI', Tahoma, sans-serif; }
+        body { background: var(--bg); color: var(--text); direction: rtl; padding-top: 70px; }
+        header { background: var(--bg); height: 56px; position: fixed; top: 0; width: 100%; display: flex; align-items: center; padding: 0 20px; border-bottom: 1px solid var(--border); z-index: 1000; justify-content: space-between; }
+        .logo { color: white; text-decoration: none; font-weight: bold; font-size: 20px; display: flex; align-items: center; cursor: pointer; }
+        .logo span { background: var(--yt-red); padding: 2px 8px; border-radius: 4px; margin-left: 8px; }
+        .search-container { display: flex; align-items: center; flex: 0 1 600px; margin: 0 20px; position: relative; }
+        .search-form { display: flex; width: 100%; position: relative; }
+        .search-form input { width: 100%; padding: 10px 50px 10px 20px; border-radius: 40px; border: 2px solid transparent; background: #222; color: #fff; outline: none; }
+        .search-form button { position: absolute; left: 5px; top: 50%; transform: translateY(-50%); width: 38px; height: 38px; border-radius: 50%; border: none; background: var(--yt-red); color: #fff; cursor: pointer; }
+        .sidebar { position: fixed; right: 0; top: 56px; width: 200px; height: calc(100vh - 56px); background: var(--bg); padding: 10px; border-left: 1px solid var(--border); overflow-y: auto; }
+        .nav-item { padding: 12px; display: block; color: white; text-decoration: none; border-radius: 8px; margin-bottom: 5px; cursor: pointer; }
+        .nav-item:hover { background: #2a2a2a; }
+        .main-content { margin-right: 200px; padding: 20px; min-height: 100vh; }
+        .grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); gap: 20px; }
+        .card { background: var(--card-bg); border-radius: 12px; overflow: hidden; cursor: pointer; transition: 0.2s; }
+        .card:hover { transform: translateY(-5px); }
+        .card img { width: 100%; aspect-ratio: 16/9; object-fit: cover; }
+        .card-info { padding: 12px; }
+        .watch-container { display: grid; grid-template-columns: 1fr 350px; gap: 20px; }
+        #player-wrapper { width: 100%; aspect-ratio: 16/9; background: #000; border-radius: 12px; overflow: hidden; }
+        .action-btn { background: #2a2a2a; border: none; color: white; padding: 8px 15px; border-radius: 20px; cursor: pointer; margin: 5px; }
+        .related-section { margin-top: 30px; }
+        .related-section h3 { margin-bottom: 15px; color: #aaa; font-size: 18px; }
+        .related-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(250px, 1fr)); gap: 15px; }
+        .related-card { background: #1a1a1a; border-radius: 8px; overflow: hidden; cursor: pointer; transition: 0.2s; }
+        .related-card:hover { transform: translateY(-3px); background: #252525; }
+        .related-card img { width: 100%; aspect-ratio: 16/9; object-fit: cover; }
+        .related-info { padding: 10px; }
+        .related-info h4 { font-size: 14px; margin-bottom: 5px; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
+        .related-info p { font-size: 12px; color: #888; }
+        
+        /* Download Modal */
+        .download-btn { background: #00c853; border: none; color: white; padding: 8px 15px; border-radius: 20px; cursor: pointer; margin: 5px; font-weight: bold; }
+        .download-btn:hover { background: #00e676; }
+        .modal-overlay { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.8); z-index: 2000; display: flex; justify-content: center; align-items: center; }
+        .modal { background: #1a1a1a; border-radius: 12px; padding: 20px; max-width: 500px; width: 90%; max-height: 80vh; overflow-y: auto; }
+        .modal h3 { margin-bottom: 15px; color: #fff; }
+        .modal-close { position: absolute; top: 10px; left: 10px; background: #333; border: none; color: white; width: 30px; height: 30px; border-radius: 50%; cursor: pointer; font-size: 18px; }
+        .quality-option { display: flex; justify-content: space-between; align-items: center; padding: 12px; background: #252525; border-radius: 8px; margin-bottom: 10px; cursor: pointer; transition: 0.2s; }
+        .quality-option:hover { background: #333; }
+        .quality-info { flex: 1; }
+        .quality-label { color: #fff; font-weight: bold; }
+        .quality-details { color: #888; font-size: 12px; }
+        .quality-download { background: #00c853; border: none; color: white; padding: 6px 15px; border-radius: 15px; cursor: pointer; }
+        .loading-text { color: #888; text-align: center; padding: 20px; }
+
+        /* TV Channels */
+        .tv-player-container { background: #000; border-radius: 12px; overflow: hidden; margin-bottom: 20px; }
+        .tv-player { width: 100%; aspect-ratio: 16/9; }
+        .channels-list { display: grid; grid-template-columns: repeat(auto-fill, minmax(200px, 1fr)); gap: 15px; }
+        .channel-card { background: #1a1a1a; border-radius: 8px; overflow: hidden; cursor: pointer; transition: 0.2s; border: 2px solid transparent; }
+        .channel-card:hover { transform: translateY(-3px); border-color: var(--yt-red); }
+        .channel-card.active { border-color: var(--yt-red); background: #2a2a2a; }
+        .channel-logo { width: 100%; aspect-ratio: 16/9; object-fit: contain; background: #111; padding: 10px; }
+        .channel-info { padding: 10px; }
+        .channel-info h4 { font-size: 14px; margin-bottom: 5px; }
+        .channel-info p { font-size: 12px; color: #888; }
+        .live-badge { background: #f00; color: white; padding: 2px 8px; border-radius: 4px; font-size: 10px; font-weight: bold; }
+        .m3u-upload-section { background: #1a1a1a; padding: 15px; border-radius: 8px; margin-bottom: 20px; display: flex; gap: 10px; align-items: center; }
+        .m3u-input { flex: 1; background: #222; border: 1px solid #333; color: white; padding: 10px 15px; border-radius: 8px; }
+        .m3u-btn { background: var(--yt-red); color: white; border: none; padding: 10px 20px; border-radius: 8px; cursor: pointer; font-weight: bold; }
+        .m3u-btn:hover { background: #ff3333; }
+        .category-tabs { display: flex; gap: 10px; margin-bottom: 15px; overflow-x: auto; padding-bottom: 5px; }
+        .category-tab { background: #222; color: white; border: none; padding: 8px 15px; border-radius: 20px; cursor: pointer; white-space: nowrap; }
+        .category-tab.active { background: var(--yt-red); }
+
+        @media (max-width: 1000px) { .sidebar { display: none; } .main-content { margin-right: 0; } .watch-container { grid-template-columns: 1fr; } }
+    </style>
+</head>
+<body>
+
+    <header>
+        <a href="#" onclick="showHome(); return false;" class="logo"><span>▶</span> YouTube Pro</a>
+        <div class="search-container">
+            <form class="search-form" onsubmit="handleSearch(event)">
+                <input type="text" id="searchInput" placeholder="ابحث هنا...">
+                <button type="submit">▶</button>
+            </form>
+        </div>
+        <button class="action-btn" onclick="showLibrary()">📚 المكتبة</button>
+    </header>
+
+    <nav class="sidebar">
+        <div class="nav-item" onclick="showHome()">🏠 الرئيسية</div>
+        <div class="nav-item" onclick="showCategory('برمجة بايثون')">💻 البرمجة</div>
+        <div class="nav-item" onclick="showCategory('الذكاء الاصطناعي')">🤖 الذكاء الاصطناعي</div>
+        <div class="nav-item" onclick="showCategory('Cybersecurity')">🛡️ الأمن السيبراني</div>
+        <div class="nav-item" onclick="showCategory('أطفال تعليمي')">👶 الأطفال</div>
+        <div class="nav-item" onclick="showCategory('وثائقي')">🎬 وثائقي</div>
+        <div class="nav-item" onclick="showCategory('ألعاب فيديو')">🎮 ألعاب</div>
+        <div class="nav-item" onclick="showCategory('القرآن الكريم')">🕌 القرآن</div>
+        <div class="nav-item" onclick="showTVChannels()">📺 قنوات بث مباشر</div>
+        <div class="nav-item" onclick="showLibrary()">⭐ المحفوظات</div>
+    </nav>
+
+    <main class="main-content" id="app"></main>
+
+    <script>
+        const DB_KEY = 'YT_PRO_LOCAL_DB';
+        let db = JSON.parse(localStorage.getItem(DB_KEY)) || { favorites: [] };
+
+        async function apiCall(endpoint, params = {}) {
+            try {
+                const query = new URLSearchParams(params).toString();
+                const url = endpoint.startsWith('video/') ? `/api/video/${endpoint.split('/')[1]}` : `/api/${endpoint}?${query}`;
+                const res = await fetch(url);
+                if (!res.ok) throw new Error('خطأ في استجابة الخادم');
+                return await res.json();
+            } catch (error) {
+                console.error("API Error:", error);
+                return null;
+            }
+        }
+
+        // تحويل بيانات yt-search إلى صيغة موحدة
+        function extractVideos(data) {
+            const items = data.items || [];
+            return items.filter(v => v.videoId).map(v => ({
+                videoId: v.videoId,
+                title: v.title,
+                thumbnail: v.thumbnail || `https://i.ytimg.com/vi/${v.videoId}/hqdefault.jpg`,
+                channel: v.author?.name || v.author || 'غير معروف',
+                views: v.views,
+                uploaded: v.ago || v.createdAt
+            }));
+        }
+
+        function renderGrid(videos, title = '') {
+            const app = document.getElementById('app');
+            if (!videos || videos.length === 0) {
+                app.innerHTML = `<h2>${title}</h2><br><p>لا توجد نتائج</p>`;
+                return;
+            }
+            const gridHTML = videos.map(v => `
+                <div class="card" onclick="showWatch('${v.videoId}')">
+                    <img src="${v.thumbnail}" loading="lazy">
+                    <div class="card-info"><h4>${v.title}</h4><p>${v.channel}</p></div>
+                </div>`).join('');
+            app.innerHTML = `<h2>${title}</h2><br><div class="grid">${gridHTML}</div>`;
+        }
+
+        async function showHome() {
+            const app = document.getElementById('app');
+            app.innerHTML = '<h2>🔥 جاري التحميل...</h2>';
+            
+            const data = await apiCall('trending');
+            if (data) {
+                const videos = extractVideos(data);
+                if (videos.length > 0) {
+                    renderGrid(videos, '🔥 الفيديوهات الرائجة');
+                } else {
+                    app.innerHTML = '<h2>لا توجد نتائج</h2>';
+                }
+            } else {
+                app.innerHTML = '<h2>فشل تحميل الفيديوهات الرائجة. تأكد من اتصال الإنترنت.</h2>';
+            }
+        }
+
+        async function showCategory(q) {
+            const app = document.getElementById('app');
+            app.innerHTML = '<h2>🔍 جاري البحث...</h2>';
+            
+            const data = await apiCall('search', { q });
+            if (data) {
+                const videos = extractVideos(data);
+                renderGrid(videos, `نتائج: ${q}`);
+            } else {
+                app.innerHTML = '<h2>فشل البحث</h2>';
+            }
+        }
+
+        async function showWatch(id) {
+            const app = document.getElementById('app');
+            app.innerHTML = '<h2>جاري تحميل الفيديو...</h2>';
+
+            const data = await apiCall(`video/${id}`);
+            if (!data || !data.title) {
+                alert('تعذر تحميل بيانات الفيديو');
+                return;
+            }
+
+            const safeTitle = data.title.replace(/['"]/g, "");
+            const description = (data.description || '').substring(0, 300);
+            const views = data.views ? Number(data.views).toLocaleString() : 'غير معروف';
+
+            // استخراج كلمات مفتاحية من العنوان للبحث عن فيديوهات ذات صلة
+            const keywords = data.title.split(' ').slice(0, 4).join(' ');
+
+            app.innerHTML = `
+                <div class="watch-container">
+                    <div>
+                        <div id="player-wrapper">
+                            <iframe src="https://www.youtube.com/embed/${id}?autoplay=1" style="width:100%; height:100%; border:none;" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture" allowfullscreen></iframe>
+                        </div>
+                        <h2 style="margin-top:15px;">${data.title}</h2>
+                        <p style="color:#888; margin:10px 0;">${views} مشاهدة</p>
+                        <button class="action-btn" onclick="toggleFav('${id}', '${safeTitle}', '${data.thumbnail || ''}')">⭐ حفظ في المكتبة</button>
+                        <button class="download-btn" onclick="showDownloadModal('${id}')">⬇️ تحميل الفيديو</button>
+                        <div style="margin-top:15px; padding:15px; background:#1a1a1a; border-radius:8px;">
+                            <p style="color:#aaa; white-space:pre-wrap;">${description}</p>
+                        </div>
+                    </div>
+                </div>
+                <div class="related-section">
+                    <h3>📺 الفيديوهات ذات الصلة</h3>
+                    <p style="color:#666;">جاري التحميل...</p>
+                </div>`;
+
+            // جلب الفيديوهات ذات الصلة
+            showRelated(keywords);
+        }
+
+        async function showRelated(query) {
+            const relatedSection = document.querySelector('.related-section');
+            if (!relatedSection) return;
+
+            const data = await apiCall('search', { q: query });
+            if (data) {
+                const videos = extractVideos(data);
+                if (videos.length > 0) {
+                    const relatedHTML = videos.map(v => `
+                        <div class="related-card" onclick="showWatch('${v.videoId}')">
+                            <img src="${v.thumbnail}" loading="lazy">
+                            <div class="related-info">
+                                <h4>${v.title}</h4>
+                                <p>${v.channel}</p>
+                            </div>
+                        </div>`).join('');
+                    relatedSection.innerHTML = `<h3>📺 الفيديوهات ذات الصلة</h3><div class="related-grid">${relatedHTML}</div>`;
+                } else {
+                    relatedSection.innerHTML = '<h3>📺 الفيديوهات ذات الصلة</h3><p>لا توجد نتائج</p>';
+                }
+            } else {
+                relatedSection.innerHTML = '<h3>📺 الفيديوهات ذات الصلة</h3><p>فشل التحميل</p>';
+            }
+        }
+
+        function toggleFav(id, title, thumb) {
+            if (!db.favorites.find(f => f.id === id)) {
+                db.favorites.push({id, title, thumb});
+                localStorage.setItem(DB_KEY, JSON.stringify(db));
+                alert('تم الحفظ! ✅');
+            } else {
+                alert('الفيديو محفوظ مسبقاً');
+            }
+        }
+
+        function showLibrary() {
+            const favs = db.favorites.map(f => ({ videoId: f.id, title: f.title, thumbnail: f.thumb, channel: 'محفوظ' }));
+            renderGrid(favs, '⭐ مكتبتك الخاصة');
+        }
+
+        function handleSearch(e) {
+            e.preventDefault();
+            const q = document.getElementById('searchInput').value;
+            if (q) showCategory(q);
+        }
+
+        // ====== Download Functions ======
+        async function showDownloadModal(videoId) {
+            // إنشاء overlay
+            const overlay = document.createElement('div');
+            overlay.className = 'modal-overlay';
+            overlay.id = 'downloadModal';
+            overlay.innerHTML = `
+                <div class="modal" style="position:relative;">
+                    <button class="modal-close" onclick="closeDownloadModal()">✕</button>
+                    <h3>⬇️ تحميل الفيديو</h3>
+                    <p class="loading-text">جاري جلب معلومات التحميل...</p>
+                </div>`;
+            
+            document.body.appendChild(overlay);
+            
+            // إغلاق عند الضغط خارج النافذة
+            overlay.onclick = (e) => {
+                if (e.target === overlay) closeDownloadModal();
+            };
+
+            // جلب معلومات التحميل
+            try {
+                const res = await fetch(`/api/download/${videoId}`);
+                const data = await res.json();
+                
+                if (data.error) {
+                    overlay.querySelector('.modal').innerHTML = `
+                        <button class="modal-close" onclick="closeDownloadModal()">✕</button>
+                        <h3>⬇️ تحميل الفيديو</h3>
+                        <p class="loading-text" style="color:#f00;">${data.error}</p>`;
+                    return;
+                }
+
+                const qualitiesHTML = data.qualities.map(q => `
+                    <div class="quality-option">
+                        <div class="quality-info">
+                            <div class="quality-label">${q.quality || 'غير معروف'}</div>
+                            <div class="quality-details">${q.size} • ${q.mimeType?.split('/')[1]?.split(';')[0] || 'video'}</div>
+                        </div>
+                        <button class="quality-download" onclick="downloadVideo('${q.url}', '${data.title.replace(/['"]/g, '')}')">⬇️ تحميل</button>
+                    </div>`).join('');
+
+                overlay.querySelector('.modal').innerHTML = `
+                    <button class="modal-close" onclick="closeDownloadModal()">✕</button>
+                    <h3>⬇️ تحميل الفيديو</h3>
+                    <p style="color:#aaa; margin-bottom:15px;">${data.title}</p>
+                    <div class="qualities-list">
+                        ${qualitiesHTML || '<p class="loading-text">لا تتوفر صيغ للتحميل</p>'}
+                    </div>`;
+            } catch (error) {
+                overlay.querySelector('.modal').innerHTML = `
+                    <button class="modal-close" onclick="closeDownloadModal()">✕</button>
+                    <h3>⬇️ تحميل الفيديو</h3>
+                    <p class="loading-text" style="color:#f00;">فشل جلب معلومات التحميل</p>`;
+            }
+        }
+
+        function closeDownloadModal() {
+            const modal = document.getElementById('downloadModal');
+            if (modal) modal.remove();
+        }
+
+        function downloadVideo(url, filename) {
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = filename + '.mp4';
+            a.target = '_blank';
+            a.rel = 'noopener';
+            document.body.appendChild(a);
+            a.click();
+            document.body.removeChild(a);
+        }
+
+        // ====== TV Channels with M3U Support ======
+        let currentChannel = null;
+        let allChannels = [];
+        let filteredChannels = [];
+
+        // قنوات تجريبية مجانية (يمكن استبدالها برابط M3U حقيقي)
+        const defaultChannels = [
+            { name: 'Al Jazeera', url: 'https://live-hls-web-aja.getaj.net/AJA/04.m3u8', category: 'أخبار', logo: '📰' },
+            { name: 'Al Jazeera English', url: 'https://live-hls-web-aje.getaj.net/AJE/index.m3u8', category: 'أخبار', logo: '📰' },
+            { name: 'العربية', url: 'https://live.alarabiya.net/alarabiapublish/alarabiya.smil/playlist.m3u8', category: 'أخبار', logo: '📺' },
+            { name: 'France 24 Arabic', url: 'https://stream.francetvinfo.fr/f24_ar/sap4/f24_ar_720p.m3u8', category: 'أخبار', logo: '🇫🇷' },
+            { name: 'DW Arabic', url: 'https://dwamdstream103.akamaized.net/hls/live/2015525/dwstream103/index.m3u8', category: 'أخبار', logo: '🇩🇪' },
+            { name: 'Sky News Arabia', url: 'https://stream.skynewsarabia.com/hls/sna_720.m3u8', category: 'أخبار', logo: '📺' },
+            { name: 'Quran Makkah Live', url: 'https://win.holol.com/live/quran/playlist.m3u8', category: 'دينية', logo: '🕌' },
+            { name: 'Sunnah Live', url: 'https://win.holol.com/live/sunnah/playlist.m3u8', category: 'دينية', logo: '🕌' },
+            { name: 'Spacetoon (YouTube Live)', url: 'https://www.youtube.com/embed/UCOFMVh3mGxhH2_cqCO3YFQg/live', category: 'أطفال', logo: '👶' },
+            { name: 'CN Arabic', url: 'https://www.youtube.com/embed/UCjE2Gn0O5dZJ8K4pYjBmNjg/live', category: 'أطفال', logo: '👶' },
+        ];
+
+        function showTVChannels() {
+            const app = document.getElementById('app');
+            allChannels = JSON.parse(localStorage.getItem('YT_PRO_TV_CHANNELS')) || defaultChannels;
+            
+            // استخراج الفئات
+            const categories = ['الكل', ...new Set(allChannels.map(ch => ch.category).filter(Boolean))];
+            const tabsHTML = categories.map((cat, i) => 
+                `<button class="category-tab ${i === 0 ? 'active' : ''}" onclick="filterChannels('${cat}')">${cat}</button>`
+            ).join('');
+
+            app.innerHTML = `
+                <h2>📺 قنوات البث المباشر</h2><br>
+                <div class="m3u-upload-section">
+                    <input type="text" class="m3u-input" id="m3uUrl" placeholder="أدخل رابط ملف M3U (https://example.com/playlist.m3u)">
+                    <button class="m3u-btn" onclick="loadM3U()">📥 تحميل</button>
+                </div>
+                <div style="margin-bottom:15px;">
+                    <label style="color:#888; font-size:14px;">أو ارفع ملف M3U من جهازك:</label>
+                    <input type="file" accept=".m3u,.m3u8" onchange="loadM3UFile(event)" style="color:white; margin-top:8px;">
+                </div>
+                <div class="category-tabs" id="categoryTabs">${tabsHTML}</div>
+                <div id="tvPlayerContainer"></div>
+                <div class="channels-list" id="channelsList"></div>`;
+
+            filterChannels('الكل');
+        }
+
+        function filterChannels(category) {
+            // تحديث الأزرار النشطة
+            document.querySelectorAll('.category-tab').forEach(tab => {
+                tab.classList.toggle('active', tab.textContent === category);
+            });
+
+            filteredChannels = category === 'الكل' ? allChannels : allChannels.filter(ch => ch.category === category);
+            renderChannels();
+        }
+
+        function renderChannels() {
+            const list = document.getElementById('channelsList');
+            if (!list) return;
+
+            if (filteredChannels.length === 0) {
+                list.innerHTML = '<p class="loading-text">لا توجد قنوات. أضف رابط M3U لتحميل القنوات.</p>';
+                return;
+            }
+
+            list.innerHTML = filteredChannels.map((ch, i) => `
+                <div class="channel-card ${currentChannel === i ? 'active' : ''}" onclick="playChannel(${i})">
+                    <div class="channel-logo" style="display:flex; align-items:center; justify-content:center; font-size:40px; background:#111;">
+                        ${ch.logo || '📺'}
+                    </div>
+                    <div class="channel-info">
+                        <h4>${ch.name}</h4>
+                        <p>${ch.category || 'عام'} <span class="live-badge">LIVE</span></p>
+                    </div>
+                </div>`).join('');
+        }
+
+        function playChannel(index) {
+            currentChannel = index;
+            const ch = filteredChannels[index];
+            if (!ch) return;
+
+            const container = document.getElementById('tvPlayerContainer');
+            if (!container) return;
+
+            let playerHTML = '';
+            
+            if (ch.url.includes('youtube.com') || ch.url.includes('youtu.be')) {
+                // YouTube embed
+                const videoId = ch.url.includes('embed/') ? ch.url.split('/embed/')[1]?.split('/')[0] : ch.url.split('v=')[1];
+                playerHTML = `<iframe class="tv-player" src="https://www.youtube.com/embed/${videoId}?autoplay=1" frameborder="0" allow="autoplay; fullscreen" allowfullscreen></iframe>`;
+            } else if (ch.url.endsWith('.m3u8') || ch.url.includes('.m3u8')) {
+                // HLS stream using hls.js
+                playerHTML = `
+                    <video id="tvVideo" class="tv-player" controls autoplay style="background:#000;"></video>
+                    <script src="https://cdn.jsdelivr.net/npm/hls.js@latest"><\/script>
+                    <script>
+                        function initHLS() {
+                            const video = document.getElementById('tvVideo');
+                            if (!video) return;
+                            
+                            if (Hls.isSupported()) {
+                                const hls = new Hls({
+                                    debug: false,
+                                    enableWorker: true
+                                });
+                                hls.loadSource('${ch.url}');
+                                hls.attachMedia(video);
+                                hls.on(Hls.Events.MANIFEST_PARSED, function() {
+                                    video.play().catch(e => console.log('Autoplay prevented'));
+                                });
+                                hls.on(Hls.Events.ERROR, function(event, data) {
+                                    console.error('HLS error:', data);
+                                    if (data.fatal) {
+                                        console.log('Fatal HLS error, trying to recover...');
+                                        switch(data.type) {
+                                            case Hls.ErrorTypes.NETWORK_ERROR:
+                                                hls.startLoad();
+                                                break;
+                                            case Hls.ErrorTypes.MEDIA_ERROR:
+                                                hls.recoverMediaError();
+                                                break;
+                                            default:
+                                                hls.destroy();
+                                                break;
+                                        }
+                                    }
+                                });
+                            } else if (video.canPlayType('application/vnd.apple.mpegurl')) {
+                                video.src = '${ch.url}';
+                                video.addEventListener('loadedmetadata', function() {
+                                    video.play().catch(e => console.log('Autoplay prevented'));
+                                });
+                            } else {
+                                console.error('HLS not supported in this browser');
+                            }
+                        }
+                        
+                        if (typeof Hls !== 'undefined') {
+                            initHLS();
+                        } else {
+                            window.addEventListener('load', function() {
+                                setTimeout(initHLS, 500);
+                            });
+                        }
+                    <\/script>`;
+            } else {
+                // Generic video URL
+                playerHTML = `<video class="tv-player" controls autoplay src="${ch.url}"></video>`;
+            }
+
+            container.innerHTML = `<div class="tv-player-container">${playerHTML}</div><h3 style="margin:10px 0;">📺 ${ch.name}</h3>`;
+
+            // تحديث البطاقات
+            renderChannels();
+        }
+
+        // تحميل M3U من رابط
+        async function loadM3U() {
+            const url = document.getElementById('m3uUrl')?.value;
+            if (!url) return alert('أدخل رابط ملف M3U');
+
+            const app = document.getElementById('app');
+            app.querySelector('.m3u-upload-section').insertAdjacentHTML('afterend', '<p class="loading-text">جاري تحميل القنوات...</p>');
+
+            try {
+                const response = await fetch(url);
+                const content = await response.text();
+                parseM3U(content);
+            } catch (error) {
+                alert('فشل تحميل الملف. تأكد من صحة الرابط.');
+            }
+        }
+
+        // تحميل M3U من ملف محلي
+        function loadM3UFile(event) {
+            const file = event.target.files[0];
+            if (!file) return;
+
+            const reader = new FileReader();
+            reader.onload = (e) => {
+                parseM3U(e.target.result);
+            };
+            reader.readAsText(file);
+        }
+
+        // تحليل ملف M3U
+        function parseM3U(content) {
+            const lines = content.split('\n').map(l => l.trim()).filter(l => l);
+            const channels = [];
+            let currentChannel = {};
+
+            for (let i = 0; i < lines.length; i++) {
+                const line = lines[i];
+
+                if (line.startsWith('#EXTINF:')) {
+                    // استخراج اسم القناة
+                    const nameMatch = line.match(/,(.+)$/);
+                    currentChannel.name = nameMatch ? nameMatch[1].trim() : 'قناة غير معروفة';
+                    
+                    // استخراج الشعار
+                    const logoMatch = line.match(/tvg-logo="([^"]+)"/);
+                    currentChannel.logo = logoMatch ? `<img src="${logoMatch[1]}" style="width:100%;height:100%;object-fit:contain;">` : '📺';
+
+                    // استخراج المجموعة
+                    const groupMatch = line.match(/group-title="([^"]+)"/);
+                    currentChannel.category = groupMatch ? groupMatch[1] : 'عام';
+                } else if (line.startsWith('http') || line.startsWith('rtsp') || line.startsWith('rtmp')) {
+                    currentChannel.url = line;
+                    channels.push({ ...currentChannel });
+                    currentChannel = {};
+                }
+            }
+
+            if (channels.length > 0) {
+                allChannels = channels;
+                localStorage.setItem('YT_PRO_TV_CHANNELS', JSON.stringify(channels));
+                showTVChannels();
+                alert(`✅ تم تحميل ${channels.length} قناة بنجاح!`);
+            } else {
+                alert('لم يتم العثور على قنوات في الملف');
+            }
+        }
+
+        showHome();
+    </script>
+</body>
+</html>
