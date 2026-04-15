@@ -1,20 +1,16 @@
 {
   "name": "youtube-pro-app",
   "version": "1.0.0",
-  "description": "YouTube Pro Application",
   "main": "server.js",
   "scripts": {
-    "start": "node server.js",
-    "test": "echo \"Error: no test specified\" && exit 1"
+    "start": "node server.js"
   },
-  "keywords": [],
-  "author": "",
-  "license": "ISC",
-  "type": "commonjs",
   "dependencies": {
     "@distube/ytdl-core": "^4.16.12",
     "axios": "^1.6.0",
     "express": "^5.2.1",
+    "http-cookie-agent": "^7.0.1",
+    "tough-cookie": "^5.1.2",
     "yt-search": "^2.13.1"
   }
 }
