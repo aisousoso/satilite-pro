@@ -11,8 +11,10 @@
   "license": "ISC",
   "type": "commonjs",
   "dependencies": {
-    "@distube/ytdl-core": "4.16.12",
-    "express": "^5.2.1",
-    "yt-search": "^2.13.1"
+  "@distube/ytdl-core": "^4.16.12",
+  "axios": "^1.6.0",
+  "express": "^5.2.1",
+  "yt-search": "^2.13.1"
+}
   }
 }
