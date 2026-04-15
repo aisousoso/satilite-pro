@@ -1,151 +1,102 @@
 const express = require('express');
 const yts = require('yt-search');
 const ytdl = require('@distube/ytdl-core');
-const axios = require('axios'); // للاتصال بـ YouTube Data API
+const axios = require('axios');
 const http = require('http');
 const https = require('https');
+const { CookieJar } = require('tough-cookie');
+const { HttpCookieAgent, HttpsCookieAgent } = require('http-cookie-agent/http');
 
 const app = express();
 
-// 1. إعداد المنفذ الديناميكي (مهم جداً لـ Render)
+// 1. إعداد المنفذ والمفتاح
 const PORT = process.env.PORT || 3000;
-
-// 2. إعداد مفتاح API (يؤخذه من البيئة أو يكون فارغاً)
 const API_KEY = process.env.YOUTUBE_API_KEY || '';
 
-// 3. إعدادات الوكيل (Agents) لتحسين الاتصال وتجنب الحظر
-const agentOptions = {
-    keepAlive: true,
-    keepAliveMsecs: 10000,
-    maxSockets: 256,
-    maxFreeSockets: 256,
-};
-const httpsAgent = new https.Agent(agentOptions);
+// 2. إعداد الوكيل المتقدم (الحل السحري لمشكلة التحميل على Render)
+const cookieJar = new CookieJar();
+const httpAgent = new HttpCookieAgent({ cookies: { jar: cookieJar } });
+const httpsAgent = new HttpsCookieAgent({ cookies: { jar: cookieJar } });
 
 app.use(express.static('public'));
 
-// دالة مساعدة لتنسيق حجم الملف
 function formatBytes(bytes) {
     if (!bytes || bytes === '0') return 'غير معروف';
     const mb = bytes / (1024 * 1024);
     return mb.toFixed(2) + ' MB';
 }
 
-// ==========================================
-// مسارات البحث والترند (تستخدم API إن وجد)
-// ==========================================
+// --- مسارات البحث والترند (تستخدم API Key) ---
 
-// مسار الفيديوهات الرائجة
 app.get('/api/trending', async (req, res) => {
-    console.log('📡 طلب الفيديوهات الرائجة...');
     try {
         let items = [];
-
         if (API_KEY) {
-            // استخدام YouTube API الرسمي (الأفضل والأسرع)
             const response = await axios.get('https://www.googleapis.com/youtube/v3/videos', {
-                params: {
-                    part: 'snippet,contentDetails,statistics',
-                    chart: 'mostPopular',
-                    regionCode: 'SA', // يمكن تغييرها إلى EG, US, etc.
-                    maxResults: 20,
-                    key: API_KEY
-                }
+                params: { part: 'snippet,contentDetails,statistics', chart: 'mostPopular', regionCode: 'SA', maxResults: 20, key: API_KEY }
             });
             items = response.data.items.map(item => ({
-                videoId: item.id,
-                title: item.snippet.title,
-                thumbnail: item.snippet.thumbnails.medium.url,
-                channelTitle: item.snippet.channelTitle,
-                viewCount: item.statistics.viewCount,
-                publishedAt: item.snippet.publishedAt
+                videoId: item.id, title: item.snippet.title, thumbnail: item.snippet.thumbnails.medium.url,
+                channelTitle: item.snippet.channelTitle, viewCount: item.statistics.viewCount
             }));
         } else {
-            // العودة لـ yt-search إذا لم يوجد مفتاح
-            const result = await yts('trending music videos');
+            const result = await yts('trending music');
             items = result.videos.slice(0, 20);
         }
-
-        res.json({ items: items });
+        res.json({ items });
     } catch (error) {
-        console.error('❌ Trending Error:', error.message);
-        res.status(500).json({ error: 'خطأ في جلب البيانات الرائجة' });
+        res.status(500).json({ error: 'خطأ في الترند' });
     }
 });
 
-// مسار البحث
 app.get('/api/search', async (req, res) => {
-    console.log('📡 طلب بحث:', req.query.q);
     try {
         const query = req.query.q;
         if (!query) return res.status(400).json({ error: 'كلمة البحث مطلوبة' });
-
+        
         let items = [];
-
         if (API_KEY) {
-            // استخدام YouTube API الرسمي للبحث
             const response = await axios.get('https://www.googleapis.com/youtube/v3/search', {
-                params: {
-                    part: 'snippet',
-                    maxResults: 20,
-                    q: query,
-                    type: 'video',
-                    key: API_KEY
-                }
+                params: { part: 'snippet', maxResults: 20, q: query, type: 'video', key: API_KEY }
             });
             items = response.data.items.map(item => ({
-                videoId: item.id.videoId,
-                title: item.snippet.title,
-                thumbnail: item.snippet.thumbnails.medium.url,
-                channelTitle: item.snippet.channelTitle,
-                publishedAt: item.snippet.publishedAt,
-                description: item.snippet.description
+                videoId: item.id.videoId, title: item.snippet.title, thumbnail: item.snippet.thumbnails.medium.url,
+                channelTitle: item.snippet.channelTitle, description: item.snippet.description
             }));
         } else {
-            // العودة لـ yt-search
             const result = await yts(query);
             items = result.videos.slice(0, 20);
         }
-
-        res.json({ items: items });
+        res.json({ items });
     } catch (error) {
-        console.error('❌ Search Error:', error.message);
-        res.status(500).json({ error: 'خطأ في عملية البحث' });
+        res.status(500).json({ error: 'خطأ في البحث' });
     }
 });
 
-// مسار تفاصيل فيديو محدد
 app.get('/api/video/:id', async (req, res) => {
     try {
-        const videoId = req.params.id;
-        // نستخدم yts هنا لأنه يجلب التفاصيل بسهولة سواء مع API أو بدونه
-        const result = await yts({ videoId: videoId });
+        const result = await yts({ videoId: req.params.id });
         res.json(result);
     } catch (error) {
-        res.status(500).json({ error: 'خطأ في جلب التفاصيل' });
+        res.status(500).json({ error: 'خطأ في التفاصيل' });
     }
 });
 
-// ==========================================
-// مسار التحميل (يستخدم ytdl-core دائماً)
-// ==========================================
+// --- مسار التحميل (يستخدم ytdl مع الوكلاء المتقدمين) ---
+
 app.get('/api/download/:id', async (req, res) => {
-    console.log('📥 طلب معلومات التحميل:', req.params.id);
+    console.log('📥 جاري جلب روابط التحميل لـ:', req.params.id);
     try {
         const videoId = req.params.id;
         
-        if (!videoId || videoId.length !== 11) {
-            return res.status(400).json({ error: 'معرف الفيديو غير صالح' });
-        }
-
-        // خيارات متقدمة لتجاوز قيود يوتيوب على السيرفرات
+        // الخيارات السحرية لتجاوز حظر يوتيوب
         const options = {
             requestOptions: {
                 headers: {
                     'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36',
-                    'Accept-Language': 'en-US,en;q=0.9,ar;q=0.8',
+                    'Accept-Language': 'en-US,en;q=0.9',
                 },
-                agent: httpsAgent
+                agent: httpsAgent // هنا يكمن الحل: استخدام وكيل الكوكيز
             }
         };
 
@@ -153,47 +104,39 @@ app.get('/api/download/:id', async (req, res) => {
         const streamingData = info.player_response?.streamingData;
         
         if (!streamingData) {
-            return res.status(400).json({ error: 'الفيديو غير متاح للتحميل أو محمي بحقوق النشر.' });
+            return res.status(400).json({ error: 'الفيديو محمي أو غير متاح.' });
         }
 
         const allFormats = [...(streamingData.formats || []), ...(streamingData.adaptiveFormats || [])];
         
-        // تصفية وتنظيم الصيغ المتاحة
         const qualities = allFormats
             .filter(f => f.url && f.mimeType)
             .map(f => ({
                 itag: f.itag,
-                quality: f.qualityLabel || (f.mimeType.includes('audio') ? 'صوت فقط' : 'فيديو'),
+                quality: f.qualityLabel || (f.mimeType.includes('audio') ? 'صوت' : 'فيديو'),
                 mimeType: f.mimeType,
-                size: f.contentLength ? formatBytes(f.contentLength) : 'غير معروف',
+                size: f.contentLength ? formatBytes(f.contentLength) : '?',
                 url: f.url
             }))
-            .slice(0, 10); // نأخذ أفضل 10 صيغ فقط
+            .slice(0, 8);
 
         res.json({
-            title: info.videoDetails?.title || 'فيديو بدون عنوان',
-            thumbnail: info.videoDetails?.thumbnails?.[0]?.url || '',
-            duration: info.videoDetails?.lengthSeconds || '',
+            title: info.videoDetails?.title,
+            thumbnail: info.videoDetails?.thumbnails?.[0]?.url,
+            duration: info.videoDetails?.lengthSeconds,
             qualities: qualities
         });
 
     } catch (error) {
-        console.error('❌ Download Info Error:', error.message);
+        console.error('❌ Download Error:', error.message);
         res.status(500).json({ 
-            error: 'فشل جلب بيانات التحميل.',
+            error: 'فشل التحميل. يوتيوب قد يكون حظر الطلب مؤقتاً.',
             details: error.message 
         });
     }
 });
 
-// تشغيل السيرفر
 app.listen(PORT, () => {
-    console.log(`=========================================`);
-    console.log(`🚀 السيرفر يعمل بنجاح على المنفذ ${PORT}`);
-    if (API_KEY) {
-        console.log('✅ YouTube API Key is Active (High Performance)');
-    } else {
-        console.log('⚠️ No API Key found. Using fallback search mode.');
-    }
-    console.log(`=========================================`);
+    console.log(`🚀 السيرفر يعمل على المنفذ ${PORT}`);
+    console.log(API_KEY ? '✅ API Key Active' : '⚠️ No API Key');
 });
